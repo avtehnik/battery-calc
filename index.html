@@ -13,6 +13,11 @@
             <h2>battery-calc</h2>
             <table>
                 <tr>
+                    <td>ємність батареї W</td>
+                    <td><input type="number" size="3" v-model="battCapacity"></td>
+                    <td>час польоту<input type="number" size="3" v-model="flightTime"></td>
+                </tr>
+                <tr>
                     <td>кількість ячейок</td>
                     <td><input type="number" size="3" v-model="cellCount"></td>
                     <td></td>
@@ -49,8 +54,17 @@
 
 </div>
 <script>
+    function calculatePercentageTime(timeInMinutes, percentage) {
+        var decimalPercentage = percentage / 100;
 
+        // Розрахунок часу у відсотках у хвилинах
+        var timeInPercentage = timeInMinutes * decimalPercentage;
 
+        return timeInPercentage;
+    }
+    function calculatePercentage(part, whole) {
+        return (part / whole) * 100;
+    }
     function calculateTotalEnergyLoss(resistance, current) {
         // Закон Джоуля-Ленца: P = I^2 * R
         console.log(resistance);
@@ -82,6 +96,8 @@
     new Vue({
         el: "#app",
         data: {
+            battCapacity: 0,
+            flightTime: 0,
             cellCount: 6,
             cellResistance: 0,
             packResistance: 0,
@@ -102,6 +118,8 @@
                 var losesChartData = new google.visualization.DataTable();
                 losesChartData.addColumn('number', 'струм');
                 losesChartData.addColumn('number', 'втрати W');
+                losesChartData.addColumn('number', 'втрати %');
+                losesChartData.addColumn('number', 'втрати часу');
 
 
                 currents.map((i) => {
@@ -116,13 +134,16 @@
                         ]
                     ]);
 
+                    let energyLossPrecentage =  calculatePercentage(energyLoss, this.battCapacity);
+                    let timeLoss =  calculatePercentageTime(this.flightTime, energyLossPrecentage);
+
                     losesChartData.addRows([
                         [i,
-                            {v: energyLoss, f: energyLoss.toFixed(2)}
+                            {v: energyLoss, f: energyLoss.toFixed(2)},
+                            {v: energyLossPrecentage, f: energyLossPrecentage.toFixed(2)},
+                            {v: timeLoss, f: timeLoss.toFixed(2)},
                         ]
                     ]);
-
-
                 });
                 currentChart.draw(currentChartData, {
                     hAxis: {
