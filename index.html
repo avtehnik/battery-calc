@@ -1,0 +1,159 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>battery-calc</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+</head>
+<body>
+<div id="app">
+    <div>
+        <div style="padding: 50px">
+            <h2>battery-calc</h2>
+            <table>
+                <tr>
+                    <td>кількість ячейок</td>
+                    <td><input type="number" size="3" v-model="cellCount"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>опір ячейки</td>
+                    <td><input type="number" size="3" v-model="cellResistance"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>опір збірки,</td>
+                    <td><input type="number" size="3" v-model="packResistance"></td>
+                    <td>опір зєднань {{joinsResistance}}мОм</td>
+                </tr>
+                <tr>
+                    <td>опір з кабелем</td>
+                    <td><input type="number" size="3" v-model="packResistanceWithCable"></td>
+                    <td>опір кабелелю {{cableResistance}} мОм</td>
+                </tr>
+                <tr style="display: none">
+                    <td>струм</td>
+                    <td><input type="number" size="3" v-model="current"></td>
+                    <td>падіння напруги на ячейку {{voltageDrop}}v</td>
+                </tr>
+            </table>
+            <h3>Падіння напруги</h3>
+            <div id="currentChart"></div>
+            <h3>Втрати</h3>
+            <div id="lossesChart"></div>
+
+        </div>
+    </div>
+
+
+</div>
+<script>
+
+
+    function calculateTotalEnergyLoss(resistance, current) {
+        // Закон Джоуля-Ленца: P = I^2 * R
+        console.log(resistance);
+        return current * current * resistance;
+    }
+
+    // Приклад використання функції
+    var resistanceOfWire = 0.1; // Опір дроту в омах
+    var currentThroughWire = 5; // Сила струму в амперах
+
+    var totalEnergyLoss = calculateTotalEnergyLoss(resistanceOfWire, currentThroughWire);
+    console.log("Загальні втрати енергії в дроті:", totalEnergyLoss, "ватт");
+
+    google.charts.load('current', {packages: ['corechart', 'line']});
+    var currentChart, losesChart;
+    var options = {
+        hAxis: {
+            title: 'Струм'
+        },
+        vAxis: {
+            title: 'Вольтаж'
+        }
+    };
+    google.charts.setOnLoadCallback(function () {
+        currentChart = new google.visualization.LineChart(document.getElementById('currentChart'));
+        losesChart = new google.visualization.LineChart(document.getElementById('lossesChart'));
+    });
+
+    new Vue({
+        el: "#app",
+        data: {
+            cellCount: 6,
+            cellResistance: 0,
+            packResistance: 0,
+            packResistanceWithCable: 0,
+            current: 1,
+        },
+        computed: {
+            voltageDrop: function () {
+                if (this.packResistanceWithCable == 0) {
+                    return 0;
+                }
+                let currents = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180];
+                var currentChartData = new google.visualization.DataTable();
+                currentChartData.addColumn('number', 'струм');
+                currentChartData.addColumn('number', 'падіння напруги на ячейку');
+                currentChartData.addColumn('number', 'падіння напруги на збірці');
+
+                var losesChartData = new google.visualization.DataTable();
+                losesChartData.addColumn('number', 'струм');
+                losesChartData.addColumn('number', 'втрати W');
+
+
+                currents.map((i) => {
+                    let totalVoltageDrop = (i * (this.packResistanceWithCable / 1000));
+                    let cellVoltageDrop = (i * ((this.packResistanceWithCable / 6) / 1000));
+                    console.log(this.cableResistance , this.joinsResistance)
+                    let energyLoss = calculateTotalEnergyLoss((parseFloat(this.cableResistance) + parseFloat(this.joinsResistance))/1000, i);
+                    currentChartData.addRows([
+                        [i,
+                            {v: cellVoltageDrop, f: cellVoltageDrop.toFixed(2)},
+                            {v: totalVoltageDrop, f: totalVoltageDrop.toFixed(2)},
+                        ]
+                    ]);
+
+                    losesChartData.addRows([
+                        [i,
+                            {v: energyLoss, f: energyLoss.toFixed(2)}
+                        ]
+                    ]);
+
+
+                });
+                currentChart.draw(currentChartData, {
+                    hAxis: {
+                        title: 'Струм'
+                    },
+                    vAxis: {
+                        title: 'Вольтаж'
+                    }
+                });
+                losesChart.draw(losesChartData, {
+                    hAxis: {
+                        title: 'Струм'
+                    },
+                    vAxis: {
+                        title: 'Вати'
+                    }
+                });
+
+                return (this.current * (this.packResistanceWithCable / 1000)).toFixed(1);
+            },
+            joinsResistance: function () {
+                console.log('joinsResistance');
+                return (this.packResistance - (this.cellResistance * this.cellCount)).toFixed(1);
+            },
+            cableResistance: function () {
+                console.log('cableResistance');
+                return (this.packResistanceWithCable - this.packResistance).toFixed(1);
+            }
+        },
+
+    });
+</script>
+</body>
+</html>
